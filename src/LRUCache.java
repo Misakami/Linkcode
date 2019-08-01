@@ -1,4 +1,6 @@
 import java.util.HashMap;
+import java.util.IllegalFormatCodePointException;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class LRUCache {
@@ -22,75 +24,68 @@ public class LRUCache {
     private DoubleNode firstNode;
     private DoubleNode lastNode;
 
+
     public LRUCache(int capacity) {
         this.capacity = capacity;
-        firstNode = new DoubleNode(0,0);
-        lastNode = new DoubleNode(0,0);
+        firstNode = new DoubleNode(-1, -1);
+        lastNode = new DoubleNode(-1, -1);
         firstNode.next = lastNode;
         lastNode.prev = firstNode;
     }
 
     public int get(int key) {
         if (map.containsKey(key)) {
-            newGet(map.get(key));
-            return map.get(key).value;
-        } else
+            DoubleNode getNode = map.get(key);
+
+            //删除所在节点
+            DoubleNode nodePerv = getNode.prev;
+            DoubleNode nodeNext = getNode.next;
+            nodeNext.prev = nodePerv;
+            nodePerv.next = nodeNext;
+
+            //放在最近使用位置
+            DoubleNode lastNodePrev = lastNode.prev;
+            lastNodePrev.next = getNode;
+            getNode.prev = lastNodePrev;
+            getNode.next = lastNode;
+            lastNode.prev = getNode;
+
+            return getNode.value;
+        } else {
             return -1;
-    }
-
-    private void newGet(DoubleNode doubleNode) {
-        if (doubleNode.prev!=null)
-        doubleNode.prev.next = doubleNode.next;
-        if (doubleNode.next!=null)
-        doubleNode.next.prev = doubleNode.prev;
-        doubleNode.prev = null;
-        doubleNode.next = firstNode;
-        firstNode.prev = doubleNode;
-        firstNode = doubleNode;
-
+        }
     }
 
     public void put(int key, int value) {
-        DoubleNode newNode = map.get(key);
-        if (newNode != null) {
-            newNode = null;
-        } else {
-            newNode = new DoubleNode(key, value);
-            if (capacity == 0) {
-                reMove();
-                capacity++;
+        if (map.containsKey(key)){
+            DoubleNode containNode = map.get(key);
+            containNode.prev.next = containNode.next;
+            containNode.next.prev = containNode.prev;
+
+            lastNode.prev.next = containNode;
+            containNode.prev = lastNode.prev;
+            containNode.next = lastNode;
+            lastNode.prev = containNode;
+            containNode.value = value;
+        }else {
+            if (capacity <= 0){
+                DoubleNode node = firstNode.next;
+                map.remove(node.key);
+
+                firstNode.next = node.next;
+                node.next.prev = firstNode;
             }
-            map.put(key,newNode);
-            newPut(newNode);
             capacity--;
-        }
-    }
-
-    private void newPut(DoubleNode newNode) {
-        if (firstNode == null) {
-            firstNode = newNode;
-            lastNode = newNode;
-        } else {
-            firstNode.prev = newNode;
-            newNode.next = firstNode;
-            firstNode = newNode;
-        }
-        lastNode = firstNode;
-        while (lastNode.next != null) {
-            lastNode = lastNode.next;
-        }
-    }
-
-    private void reMove() {
-        DoubleNode node = lastNode;
-        map.remove(lastNode.key);
-        lastNode = node.prev;
-        if (lastNode != null) {
-            lastNode.next = null;
-            node.prev = null;
+            DoubleNode node = new DoubleNode(key, value);
+            lastNode.prev.next = node;
+            node.prev = lastNode.prev;
+            node.next = lastNode;
+            lastNode.prev = node;
+            map.put(key,node);
         }
     }
 }
+
 class LRUCache1 {
 
     class Node {
@@ -114,7 +109,7 @@ class LRUCache1 {
     }
 
     public int get(int key) {
-        if(!map.containsKey(key)) {
+        if (!map.containsKey(key)) {
             return -1;
         }
 
@@ -142,7 +137,7 @@ class LRUCache1 {
             Node newNode = new Node();
             newNode.key = key;
             newNode.value = value;
-            if(size >= capa){
+            if (size >= capa) {
                 Node tempHead = dummy.next;
                 dummy.next = tempHead.next;
                 dummy.next.prev = dummy;
